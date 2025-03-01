@@ -125,6 +125,7 @@ private class RecipesWindow(
     }
 
     override fun show() {
+        if (discoveredRecipes.isEmpty()) return
         ItemMenu.addToHistory(viewerUUID, this)
         window = Window.single {
             it.setViewer(player)
