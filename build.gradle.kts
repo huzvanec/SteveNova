@@ -6,7 +6,7 @@ plugins {
 }
 
 fun RepositoryHandler.configureRepos() {
-    mavenLocal { content { includeGroupAndSubgroups("xyz.xenondevs") }}
+    mavenLocal { content { includeGroupAndSubgroups("xyz.xenondevs") } }
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://repo.xenondevs.xyz/releases")
@@ -15,30 +15,30 @@ fun RepositoryHandler.configureRepos() {
 repositories { configureRepos() }
 
 subprojects {
-    group = "xyz.xenondevs.nova"
+    group = "cz.jeme.stevenova"
     version = properties["version"] as String
-    
+
     repositories { configureRepos() }
-    
+
     tasks {
         register<Jar>("sources") {
             dependsOn(JavaPlugin.CLASSES_TASK_NAME)
             from("src/main/java", "src/main/kotlin")
             archiveClassifier.set("sources")
         }
-        
+
         withType<JavaCompile> {
             sourceCompatibility = "21"
             targetCompatibility = "21"
         }
-        
+
         withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile> {
             compilerOptions {
                 jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
-                
+
                 freeCompilerArgs.addAll(
                     "-Xjvm-default=all", // Emit JVM default methods for interface declarations with bodies
-                    
+
                     // experimental features
                     "-opt-in=kotlin.io.path.ExperimentalPathApi",
                     "-opt-in=kotlin.time.ExperimentalTime",
@@ -46,7 +46,7 @@ subprojects {
                     "-opt-in=kotlin.experimental.ExperimentalTypeInference",
                     "-opt-in=xyz.xenondevs.invui.ExperimentalReactiveApi"
                 )
-                
+
                 if (!project.hasProperty("release")) {
                     freeCompilerArgs.addAll(
                         "-Xdebug" // https://kotlinlang.org/docs/debug-coroutines-with-idea.html#optimized-out-variables
