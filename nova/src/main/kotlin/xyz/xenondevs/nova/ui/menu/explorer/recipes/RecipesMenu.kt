@@ -31,12 +31,11 @@ import xyz.xenondevs.nova.world.item.recipe.RecipeContainer
 import xyz.xenondevs.nova.world.item.recipe.RecipeRegistry
 import java.util.*
 
-fun Player.showRecipes(item: ItemStack) = showRecipes(ItemUtils.getId(item))
+typealias RecipeFilter = (RecipeContainer, RecipeGroup<*>) -> Boolean
 
-fun Player.showRecipes(id: String): Boolean {
-    val recipes = RecipeRegistry.CREATION_RECIPES[id]
+private fun Player.showRecipes(id: String, recipes: Map<RecipeGroup<*>, Iterable<RecipeContainer>>?): Boolean {
     val info = RecipeRegistry.creationInfo[id]
-    if (recipes != null) {
+    if (!recipes.isNullOrEmpty()) {
         RecipesWindow(this, "recipes:$id".hashCode(), recipes, info).show()
         return true
     } else if (info != null) {
@@ -47,12 +46,22 @@ fun Player.showRecipes(id: String): Boolean {
     return false
 }
 
-fun Player.showUsages(item: ItemStack) = showUsages(ItemUtils.getId(item))
+fun Player.showRecipes(id: String): Boolean = showRecipes(id, RecipeRegistry.CREATION_RECIPES[id])
 
-fun Player.showUsages(id: String): Boolean {
-    val recipes = RecipeRegistry.USAGE_RECIPES[id]
+fun Player.showRecipes(item: ItemStack) = showRecipes(ItemUtils.getId(item))
+
+fun Player.showRecipes(id: String, filter: RecipeFilter): Boolean = showRecipes(
+    id,
+    RecipeRegistry.CREATION_RECIPES[id]?.mapValues { entry ->
+        entry.value.filter { filter(it, entry.key) }.toSet()
+    }?.filter { it.value.isNotEmpty() }
+)
+
+fun Player.showRecipes(item: ItemStack, filter: RecipeFilter) = showRecipes(ItemUtils.getId(item), filter)
+
+private fun Player.showUsages(id: String, recipes: Map<RecipeGroup<*>, Iterable<RecipeContainer>>?): Boolean {
     val info = RecipeRegistry.usageInfo[id]
-    if (recipes != null) {
+    if (!recipes.isNullOrEmpty()) {
         RecipesWindow(this, "usages:$id".hashCode(), recipes, info).show()
         return true
     } else if (info != null) {
@@ -63,6 +72,19 @@ fun Player.showUsages(id: String): Boolean {
     return false
 }
 
+fun Player.showUsages(id: String): Boolean = showUsages(id, RecipeRegistry.USAGE_RECIPES[id])
+
+fun Player.showUsages(item: ItemStack) = showUsages(ItemUtils.getId(item))
+
+fun Player.showUsages(id: String, filter: RecipeFilter): Boolean = showUsages(
+    id,
+    RecipeRegistry.USAGE_RECIPES[id]?.mapValues { entry ->
+        entry.value.filter { filter(it, entry.key) }.toSet()
+    }?.filter { it.value.isNotEmpty() }
+)
+
+fun Player.showUsages(item: ItemStack, filter: RecipeFilter) = showUsages(ItemUtils.getId(item), filter)
+
 /**
  * A menu that displays the given list of recipes.
  */
@@ -72,31 +94,32 @@ private class RecipesWindow(
     recipes: Map<RecipeGroup<*>, Iterable<RecipeContainer>>,
     info: String? = null
 ) : ItemMenu {
-    
+
     private val recipesGuiStructure = Structure(
         "< . . . . . . . >",
         "x x x x x x x x x",
         "x x x x x x x x x",
-        "x x x x x x x x x")
+        "x x x x x x x x x"
+    )
         .addIngredient('<', ::PageBackItem)
         .addIngredient('>', ::PageForwardItem)
-    
+
     private val viewerUUID = player.uniqueId
-    
+
     private lateinit var currentType: RecipeGroup<*>
-    
+
     private val mainGui: TabGui
     private lateinit var window: Window
-    
+
     init {
         @Suppress("UNCHECKED_CAST")
         recipes as Map<RecipeGroup<Any>, Iterable<RecipeContainer>>
-        
+
         val craftingTabs: List<Pair<RecipeGroup<*>, Gui>> = recipes
             .mapValues { (type, containers) -> createPagedRecipesGui(containers.map { container -> type.getGui(container.recipe) }) }
             .map { it.key to it.value }
             .sortedBy { it.first }
-        
+
         mainGui = TabGui.normal()
             .setStructure(
                 "b . . . . . . . .",
@@ -109,7 +132,7 @@ private class RecipesWindow(
             .setTabs(craftingTabs.map { it.second })
             .addIngredient('b', LastRecipeItem(viewerUUID))
             .build()
-        
+
         // Add tab buttons
         var lastTab = -1
         craftingTabs
@@ -118,10 +141,10 @@ private class RecipesWindow(
                 if (!::currentType.isInitialized) currentType = craftingType
                 mainGui.setItem(2 + ++lastTab, CraftingTabItem(craftingType, lastTab))
             }
-        
+
         if (info != null) mainGui.setItem(2 + ++lastTab, InfoItem(info))
     }
-    
+
     override fun show() {
         ItemMenu.addToHistory(viewerUUID, this)
         window = Window.single {
@@ -130,7 +153,7 @@ private class RecipesWindow(
             it.setGui(mainGui)
         }.apply { open() }
     }
-    
+
     private fun getCurrentTitle(): Component {
         val currentTab = mainGui.tabs[mainGui.tab] as PagedGui<*>
         val pageNumberString = "${currentTab.page + 1} / ${currentTab.pageAmount}"
@@ -142,23 +165,24 @@ private class RecipesWindow(
             .append(pageNumberComponent)
             .build()
     }
-    
+
     private fun updateTitle() {
         window.setTitle(getCurrentTitle())
     }
-    
+
     override fun equals(other: Any?): Boolean {
         return other is RecipesWindow && id == other.id
     }
-    
+
     override fun hashCode(): Int {
         return id
     }
-    
-    private inner class CraftingTabItem(private val recipeGroup: RecipeGroup<*>, private val tab: Int) : AbstractTabGuiBoundItem() {
-        
+
+    private inner class CraftingTabItem(private val recipeGroup: RecipeGroup<*>, private val tab: Int) :
+        AbstractTabGuiBoundItem() {
+
         override fun getItemProvider(player: Player) = recipeGroup.icon
-        
+
         override fun handleClick(clickType: ClickType, player: Player, click: Click) {
             if (clickType == ClickType.LEFT) {
                 gui.tab = tab
@@ -166,31 +190,35 @@ private class RecipesWindow(
                 updateTitle()
             } else if (clickType == ClickType.RIGHT) {
                 val recipes = RecipeRegistry.RECIPES_BY_TYPE[recipeGroup]
-                if (recipes != null) RecipesWindow(player, "group:$recipeGroup".hashCode(), mapOf(recipeGroup to recipes)).show()
+                if (recipes != null) RecipesWindow(
+                    player,
+                    "group:$recipeGroup".hashCode(),
+                    mapOf(recipeGroup to recipes)
+                ).show()
             }
         }
-        
+
     }
-    
+
     private class InfoItem(private val info: String) : AbstractItem() {
-        
+
         override fun getItemProvider(player: Player): ItemBuilder =
             ItemBuilder(Material.KNOWLEDGE_BOOK)
                 .setName(Component.translatable("menu.nova.recipe.item_info"))
-        
+
         override fun handleClick(clickType: ClickType, player: Player, click: Click) {
             player.closeInventory()
             player.sendMessage(Component.translatable(info))
         }
-        
+
     }
-    
+
     private inner class PageBackItem : AbstractPagedGuiBoundItem() {
-        
+
         override fun getItemProvider(player: Player) =
             (if (gui.hasPreviousPage()) DefaultGuiItems.TP_ARROW_LEFT_BTN_ON else DefaultGuiItems.TP_ARROW_LEFT_BTN_OFF)
                 .clientsideProvider
-        
+
         override fun handleClick(clickType: ClickType, player: Player, click: Click) {
             if (clickType == ClickType.LEFT && gui.hasPreviousPage()) {
                 player.playClickSound()
@@ -198,15 +226,15 @@ private class RecipesWindow(
                 updateTitle()
             }
         }
-        
+
     }
-    
+
     private inner class PageForwardItem : AbstractPagedGuiBoundItem() {
-        
+
         override fun getItemProvider(player: Player) =
             (if (gui.hasNextPage()) DefaultGuiItems.TP_ARROW_RIGHT_BTN_ON else DefaultGuiItems.TP_ARROW_RIGHT_BTN_OFF)
                 .clientsideProvider
-        
+
         override fun handleClick(clickType: ClickType, player: Player, click: Click) {
             if (clickType == ClickType.LEFT && gui.hasNextPage()) {
                 player.playClickSound()
@@ -214,27 +242,27 @@ private class RecipesWindow(
                 updateTitle()
             }
         }
-        
+
     }
-    
+
     private fun createPagedRecipesGui(recipes: List<Gui>): Gui =
         PagedGui.guis()
             .setStructure(recipesGuiStructure)
             .setContent(recipes)
             .build()
-    
+
 }
 
 private class LastRecipeItem(private val viewerUUID: UUID) : AbstractItem() {
-    
+
     override fun getItemProvider(player: Player): ItemProvider {
         return if (ItemMenu.hasHistory(viewerUUID)) {
             DefaultGuiItems.TP_ARROW_LEFT_ON.clientsideProvider
         } else ItemWrapper(ItemStack(Material.AIR))
     }
-    
+
     override fun handleClick(clickType: ClickType, player: Player, click: Click) {
         if (clickType == ClickType.LEFT && ItemMenu.hasHistory(viewerUUID)) ItemMenu.showPreviousMenu(viewerUUID)
     }
-    
+
 }
