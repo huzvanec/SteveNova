@@ -5,7 +5,7 @@ import org.bukkit.Keyed
 
 class RecipeContainer(val recipe: Any) {
     
-    private val id: Key = when (recipe) {
+    val id: Key = when (recipe) {
         is Keyed -> recipe.key
         is NovaRecipe -> recipe.id
         else -> throw IllegalArgumentException("Could not find a recipe key")
