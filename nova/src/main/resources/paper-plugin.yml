@@ -1,8 +1,8 @@
-name: Nova
+name: SteveNova
 version: "${version}"
 api-version: "${apiVersion}"
-authors: [ "StudioCode", "ByteZ1337", "Javahase" ]
-website: "https://github.com/xenondevs/Nova/"
+authors: [ "StudioCode", "ByteZ1337", "Javahase", "Hužva" ]
+website: "https://github.com/huzvanec/SteveNova/"
 loader: xyz.xenondevs.nova.NovaLoader
 bootstrapper: xyz.xenondevs.nova.NovaBootstrapper
 main: xyz.xenondevs.nova.Nova
