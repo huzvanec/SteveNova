@@ -12,9 +12,9 @@ catalog {
 
         plugin("kotlin", "org.jetbrains.kotlin.jvm").versionRef("kotlin")
         plugin("paperweight", "io.papermc.paperweight.userdev").versionRef("paperweight")
-        plugin("nova", "xyz.xenondevs.nova.nova-gradle-plugin").versionRef("nova")
+        plugin("nova", "cz.jeme.stevenova.nova-gradle-plugin").versionRef("nova")
 
-        library("nova", "xyz.xenondevs.nova", "nova").versionRef("nova")
+        library("nova", "cz.jeme.stevenova", "nova").versionRef("nova")
     }
 }
 

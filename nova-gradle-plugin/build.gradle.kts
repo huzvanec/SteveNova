@@ -17,7 +17,7 @@ dependencies {
 gradlePlugin {
     plugins {
         create("nova-gradle-plugin") {
-            id = "xyz.xenondevs.nova.nova-gradle-plugin"
+            id = "cz.jeme.stevenova.nova-gradle-plugin"
             description = "Gradle plugin for creating Nova addons"
             implementationClass = "xyz.xenondevs.novagradle.NovaGradlePlugin"
         }
