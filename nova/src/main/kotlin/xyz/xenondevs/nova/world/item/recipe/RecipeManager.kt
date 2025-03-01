@@ -51,61 +51,61 @@ private val ALLOWED_RECIPES = setOf(NamespacedKey("minecraft", "repair_item"), N
     dependsOn = [HooksLoader::class, VanillaRecipeTypes::class]
 )
 object RecipeManager : Listener, PacketListener {
-    
+
     private val registeredVanillaRecipes = HashMap<ResourceKey<MojangRecipe<*>>, RecipeHolder<*>>()
     private val customVanillaRecipes = HashMap<ResourceKey<MojangRecipe<*>>, MojangRecipe<*>>()
     private val _novaRecipes = HashMap<RecipeType<*>, HashMap<Key, NovaRecipe>>()
     private val hardcodedRecipes = ArrayList<Any>()
-    
+
     val novaRecipes: Map<RecipeType<*>, Map<Key, NovaRecipe>>
         get() = _novaRecipes
-    
+
     @InitFun
     private fun init() {
         registerEvents()
         registerPacketListener()
         loadRecipes()
     }
-    
+
     //<editor-fold desc="hardcoded recipes", defaultstate="collapsed">
     @HardcodedRecipes
     fun registerHardcodedRecipe(recipe: NovaRecipe) {
         hardcodedRecipes += recipe
     }
-    
+
     @HardcodedRecipes
     @JvmName("registerHardcodedRecipes1")
     fun registerHardcodedRecipes(recipes: Iterable<NovaRecipe>) {
         hardcodedRecipes.addAll(recipes)
     }
-    
+
     @HardcodedRecipes
     fun registerHardcodedRecipe(recipe: BukkitRecipe) {
         hardcodedRecipes += recipe
     }
-    
+
     @HardcodedRecipes
     @JvmName("registerHardcodedRecipes2")
     fun registerHardcodedRecipes(recipes: Iterable<BukkitRecipe>) {
         hardcodedRecipes.addAll(recipes)
     }
     //</editor-fold>
-    
+
     @Suppress("UNCHECKED_CAST")
     fun <T : ConversionNovaRecipe> getConversionRecipeFor(type: RecipeType<T>, input: ItemStack): T? {
         return _novaRecipes[type]?.values?.firstOrNull { (it as ConversionNovaRecipe).input.test(input) } as T?
     }
-    
+
     @Suppress("UNCHECKED_CAST")
     fun <T : NovaRecipe> getRecipe(type: RecipeType<T>, id: Key): T? {
         return _novaRecipes[type]?.get(id) as T?
     }
-    
+
     private fun loadRecipes() {
         RecipesLoader.extractAndLoadRecipes().forEach(RecipeManager::loadRecipe)
         hardcodedRecipes.forEach(RecipeManager::loadRecipe)
     }
-    
+
     private fun loadRecipe(recipe: Any) {
         when (recipe) {
             is BukkitRecipe -> {
@@ -120,60 +120,62 @@ object RecipeManager : Listener, PacketListener {
                     is BukkitSmithingTransformRecipe -> NovaSmithingTransformRecipe(recipe)
                     else -> throw UnsupportedOperationException("Unknown recipe type: ${recipe::class.simpleName}")
                 }
-                
+
                 val key = ResourceKey.create(Registries.RECIPE, recipe.key.resourceLocation)
                 val holder = RecipeHolder(key, nmsRecipe)
                 MINECRAFT_SERVER.recipeManager.addRecipe(holder)
-                
+
                 registeredVanillaRecipes[key] = holder
                 customVanillaRecipes[key] = nmsRecipe
             }
-            
+
             is NovaRecipe -> _novaRecipes.getOrPut(recipe.type) { HashMap() }[recipe.id] = recipe
-            
+
             else -> throw UnsupportedOperationException("Unsupported Recipe Type: ${recipe::class.java}")
         }
     }
-    
+
     internal fun reload() {
         for (key in customVanillaRecipes.keys) {
             MINECRAFT_SERVER.recipeManager.removeRecipe(key)
         }
-        
+
         customVanillaRecipes.clear()
         _novaRecipes.clear()
-        
+
         loadRecipes()
         RecipeRegistry.indexRecipes()
         RECIPE_TYPE.forEach { it.group.invalidateCache() }
     }
-    
-    @EventHandler
-    private fun handleJoin(event: PlayerJoinEvent) {
-        val player = event.player
-        customVanillaRecipes.keys.forEach { player.discoverRecipe(it.location().namespacedKey) }
-    }
-    
+
+// Disabled automatic recipe discovery, it needs to be done manually
+
+//    @EventHandler
+//    private fun handleJoin(event: PlayerJoinEvent) {
+//        val player = event.player
+//        customVanillaRecipes.keys.forEach { player.discoverRecipe(it.location().namespacedKey) }
+//    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     private fun handlePrepareItemCraft(event: PrepareItemCraftEvent) {
         val recipe = event.recipe ?: return
-        
+
         if (recipe.key in ALLOWED_RECIPES)
             return
-        
+
         var requiresContainer = ResourceKey.create(Registries.RECIPE, recipe.key.resourceLocation) in registeredVanillaRecipes.keys
         if (!requiresContainer && event.inventory.contents.any { it?.novaItem != null }) {
             // prevent non-Nova recipes from using Nova items
             event.inventory.result = ItemStack(Material.AIR)
             requiresContainer = true
         }
-        
+
         if (requiresContainer) {
             // prevent modification of the recipe result by other plugins
             ReflectionRegistry.PREPARE_ITEM_CRAFT_EVENT_MATRIX_FIELD.set(event, NovaCraftingInventory(recipe, event.inventory))
         }
     }
-    
+
 }
 
 /**
@@ -184,14 +186,14 @@ internal class NovaCraftingInventory(
     val result: BukkitRecipe?,
     val inventory: CraftingInventory
 ) : CraftingInventory by inventory {
-    
+
     override fun getRecipe(): BukkitRecipe? {
         return result
     }
-    
+
     override fun setResult(newResult: ItemStack?) {
         if (ALLOW_RESULT_OVERWRITE)
             inventory.result = newResult
     }
-    
+
 }
