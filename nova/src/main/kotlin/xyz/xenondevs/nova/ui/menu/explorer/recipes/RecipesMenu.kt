@@ -10,13 +10,7 @@ import xyz.xenondevs.invui.gui.Gui
 import xyz.xenondevs.invui.gui.PagedGui
 import xyz.xenondevs.invui.gui.Structure
 import xyz.xenondevs.invui.gui.TabGui
-import xyz.xenondevs.invui.item.AbstractItem
-import xyz.xenondevs.invui.item.AbstractPagedGuiBoundItem
-import xyz.xenondevs.invui.item.AbstractTabGuiBoundItem
-import xyz.xenondevs.invui.item.Click
-import xyz.xenondevs.invui.item.ItemBuilder
-import xyz.xenondevs.invui.item.ItemProvider
-import xyz.xenondevs.invui.item.ItemWrapper
+import xyz.xenondevs.invui.item.*
 import xyz.xenondevs.invui.window.Window
 import xyz.xenondevs.nova.resources.CharSizes
 import xyz.xenondevs.nova.ui.menu.explorer.ItemMenu
@@ -26,16 +20,18 @@ import xyz.xenondevs.nova.util.component.adventure.move
 import xyz.xenondevs.nova.util.component.adventure.moveToCenter
 import xyz.xenondevs.nova.util.item.ItemUtils
 import xyz.xenondevs.nova.util.playClickSound
+import xyz.xenondevs.nova.util.toNamespacedKey
 import xyz.xenondevs.nova.world.item.DefaultGuiItems
 import xyz.xenondevs.nova.world.item.recipe.RecipeContainer
 import xyz.xenondevs.nova.world.item.recipe.RecipeRegistry
 import java.util.*
 
-typealias RecipeFilter = (RecipeContainer, RecipeGroup<*>) -> Boolean
+fun Player.showRecipes(item: ItemStack) = showRecipes(ItemUtils.getId(item))
 
-private fun Player.showRecipes(id: String, recipes: Map<RecipeGroup<*>, Iterable<RecipeContainer>>?): Boolean {
+fun Player.showRecipes(id: String): Boolean {
+    val recipes = RecipeRegistry.CREATION_RECIPES[id]
     val info = RecipeRegistry.creationInfo[id]
-    if (!recipes.isNullOrEmpty()) {
+    if (recipes != null) {
         RecipesWindow(this, "recipes:$id".hashCode(), recipes, info).show()
         return true
     } else if (info != null) {
@@ -46,22 +42,12 @@ private fun Player.showRecipes(id: String, recipes: Map<RecipeGroup<*>, Iterable
     return false
 }
 
-fun Player.showRecipes(id: String): Boolean = showRecipes(id, RecipeRegistry.CREATION_RECIPES[id])
+fun Player.showUsages(item: ItemStack) = showUsages(ItemUtils.getId(item))
 
-fun Player.showRecipes(item: ItemStack) = showRecipes(ItemUtils.getId(item))
-
-fun Player.showRecipes(id: String, filter: RecipeFilter): Boolean = showRecipes(
-    id,
-    RecipeRegistry.CREATION_RECIPES[id]?.mapValues { entry ->
-        entry.value.filter { filter(it, entry.key) }.toSet()
-    }?.filter { it.value.isNotEmpty() }
-)
-
-fun Player.showRecipes(item: ItemStack, filter: RecipeFilter) = showRecipes(ItemUtils.getId(item), filter)
-
-private fun Player.showUsages(id: String, recipes: Map<RecipeGroup<*>, Iterable<RecipeContainer>>?): Boolean {
+fun Player.showUsages(id: String): Boolean {
+    val recipes = RecipeRegistry.USAGE_RECIPES[id]
     val info = RecipeRegistry.usageInfo[id]
-    if (!recipes.isNullOrEmpty()) {
+    if (recipes != null) {
         RecipesWindow(this, "usages:$id".hashCode(), recipes, info).show()
         return true
     } else if (info != null) {
@@ -72,19 +58,6 @@ private fun Player.showUsages(id: String, recipes: Map<RecipeGroup<*>, Iterable<
     return false
 }
 
-fun Player.showUsages(id: String): Boolean = showUsages(id, RecipeRegistry.USAGE_RECIPES[id])
-
-fun Player.showUsages(item: ItemStack) = showUsages(ItemUtils.getId(item))
-
-fun Player.showUsages(id: String, filter: RecipeFilter): Boolean = showUsages(
-    id,
-    RecipeRegistry.USAGE_RECIPES[id]?.mapValues { entry ->
-        entry.value.filter { filter(it, entry.key) }.toSet()
-    }?.filter { it.value.isNotEmpty() }
-)
-
-fun Player.showUsages(item: ItemStack, filter: RecipeFilter) = showUsages(ItemUtils.getId(item), filter)
-
 /**
  * A menu that displays the given list of recipes.
  */
@@ -94,6 +67,12 @@ private class RecipesWindow(
     recipes: Map<RecipeGroup<*>, Iterable<RecipeContainer>>,
     info: String? = null
 ) : ItemMenu {
+
+    private val discoveredRecipes = recipes.mapValues { entry ->
+        entry.value.filter {
+            player.hasDiscoveredRecipe(it.id.toNamespacedKey())
+        }.toSet()
+    }.filter { it.value.isNotEmpty() }
 
     private val recipesGuiStructure = Structure(
         "< . . . . . . . >",
@@ -113,9 +92,9 @@ private class RecipesWindow(
 
     init {
         @Suppress("UNCHECKED_CAST")
-        recipes as Map<RecipeGroup<Any>, Iterable<RecipeContainer>>
+        discoveredRecipes as Map<RecipeGroup<Any>, Iterable<RecipeContainer>>
 
-        val craftingTabs: List<Pair<RecipeGroup<*>, Gui>> = recipes
+        val craftingTabs: List<Pair<RecipeGroup<*>, Gui>> = discoveredRecipes
             .mapValues { (type, containers) -> createPagedRecipesGui(containers.map { container -> type.getGui(container.recipe) }) }
             .map { it.key to it.value }
             .sortedBy { it.first }

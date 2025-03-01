@@ -53,38 +53,41 @@ private val TAB_BUTTON_TEXTURES = arrayOf(
 private const val GIVE_PERMISSION = "nova.command.give"
 
 internal class ItemsMenu(val player: Player) : ItemMenu {
-    
-    private val cheatMode: MutableProvider<Boolean> = mutableProvider { player.persistentDataContainer.get(CHEAT_MODE_KEY, PersistentDataType.BOOLEAN) == true }
-        .apply {
-            subscribe { cheatMode ->
-                player.persistentDataContainer.set(CHEAT_MODE_KEY, PersistentDataType.BOOLEAN, cheatMode)
+
+    private val cheatMode: MutableProvider<Boolean> =
+        mutableProvider { player.persistentDataContainer.get(CHEAT_MODE_KEY, PersistentDataType.BOOLEAN) == true }
+            .apply {
+                subscribe { cheatMode ->
+                    player.persistentDataContainer.set(CHEAT_MODE_KEY, PersistentDataType.BOOLEAN, cheatMode)
+                }
             }
-        }
     private val activeTab: MutableProvider<Int> = mutableProvider(0)
     private val filter: MutableProvider<String> = mutableProvider("")
-    
-    private val filteredItems: Provider<List<Item>> = combinedProvider(filter, ItemCategories.obtainableItems) { filter, obtainableItems ->
-        if (filter.isNotEmpty()) {
-            val names = obtainableItems
-                .asSequence()
-                .map { it to it.name.toPlainText(player) }
-                .filter { (_, name) -> name.contains(filter, true) }
-                .toMap(HashMap())
-            val scores = FuzzySearch.extractAll(filter, names.values).associateTo(HashMap()) { it.string to it.score }
-            names.keys.sortedWith { o1, o2 ->
-                val s1 = scores[names[o1]]!!
-                val s2 = scores[names[o2]]!!
-                if (s1 == s2) {
-                    val i1 = obtainableItems.indexOf(o1)
-                    val i2 = obtainableItems.indexOf(o2)
-                    i1.compareTo(i2)
-                } else s1.compareTo(s2)
-            }
-        } else obtainableItems.toList()
-    }
-    
+
+    private val filteredItems: Provider<List<Item>> =
+        combinedProvider(filter, ItemCategories.obtainableItems) { filter, obtainableItems ->
+            if (filter.isNotEmpty()) {
+                val names = obtainableItems
+                    .asSequence()
+                    .map { it to it.name.toPlainText(player) }
+                    .filter { (_, name) -> name.contains(filter, true) }
+                    .toMap(HashMap())
+                val scores =
+                    FuzzySearch.extractAll(filter, names.values).associateTo(HashMap()) { it.string to it.score }
+                names.keys.sortedWith { o1, o2 ->
+                    val s1 = scores[names[o1]]!!
+                    val s2 = scores[names[o2]]!!
+                    if (s1 == s2) {
+                        val i1 = obtainableItems.indexOf(o1)
+                        val i2 = obtainableItems.indexOf(o2)
+                        i1.compareTo(i2)
+                    } else s1.compareTo(s2)
+                }
+            } else obtainableItems.toList()
+        }
+
     private val tabButtons: MutableProvider<Provider<List<CreativeTabItem>>> = mutableProvider(provider(emptyList()))
-    
+
     private val openSearchItem: Item = Item.builder()
         .setItemProvider(DefaultGuiItems.TP_SEARCH.clientsideProvider)
         .addClickHandler { _, click ->
@@ -93,7 +96,7 @@ internal class ItemsMenu(val player: Player) : ItemMenu {
                 click.player.playClickSound()
             }
         }.build()
-    
+
     private val cheatModeItem: Item = Item.builder()
         .setItemProvider(cheatMode) { cheatMode ->
             if (cheatMode)
@@ -105,10 +108,11 @@ internal class ItemsMenu(val player: Player) : ItemMenu {
                 click.player.playClickSound()
             }
         }.build()
-    
+
     private val mainWindow = Window.single()
         .setTitle(activeTab) { tab -> TAB_BUTTON_TEXTURES[tab % 5].component }
-        .setGui(TabGui.normal()
+        .setGui(
+            TabGui.normal()
             .setStructure(
                 "p p p p p p p p p",
                 "p p p p p p p p p",
@@ -117,7 +121,8 @@ internal class ItemsMenu(val player: Player) : ItemMenu {
                 "x x x x x x x x x",
                 "x x x x x x x x x"
             )
-            .addIngredient('p', PagedGui.items()
+            .addIngredient(
+                'p', PagedGui.items()
                 .setStructure(
                     "x . x . x . x . x",
                     "< . . . . . . . >"
@@ -154,38 +159,41 @@ internal class ItemsMenu(val player: Player) : ItemMenu {
             }
         )
         .build(player)
-    
+
     private val searchWindow = AnvilWindow.split()
         .setTitle(DefaultGuiTextures.SEARCH.getTitle("menu.nova.items.search"))
-        .setUpperGui(Gui.normal()
-            .setStructure("a . .")
-            .addIngredient('a', AnvilTextItem(DefaultGuiItems.INVISIBLE_ITEM.createClientsideItemBuilder(), ""))
+        .setUpperGui(
+            Gui.normal()
+                .setStructure("a . .")
+                .addIngredient('a', AnvilTextItem(DefaultGuiItems.INVISIBLE_ITEM.createClientsideItemBuilder(), ""))
         )
-        .setLowerGui(PagedGui.items()
+        .setLowerGui(
+            PagedGui.items()
             .setStructure(
                 "x x x x x x x x x",
                 "x x x x x x x x x",
                 "x x x x x x x x x",
                 "# # # < # > # # s"
             )
-            .addIngredient('s', Item.builder()
-                .setItemProvider(
-                    DefaultGuiItems.ARROW_UP_ON.createClientsideItemBuilder()
-                        .setName(Component.translatable("menu.nova.items.search.back", NamedTextColor.GRAY))
-                )
-                .addClickHandler { _, click ->
-                    if (click.clickType == ClickType.LEFT) {
-                        if (filter.get().isBlank()) mainWindow.open() else searchResultsWindow.open()
-                        click.player.playClickSound()
+            .addIngredient(
+                's', Item.builder()
+                    .setItemProvider(
+                        DefaultGuiItems.ARROW_UP_ON.createClientsideItemBuilder()
+                            .setName(Component.translatable("menu.nova.items.search.back", NamedTextColor.GRAY))
+                    )
+                    .addClickHandler { _, click ->
+                        if (click.clickType == ClickType.LEFT) {
+                            if (filter.get().isBlank()) mainWindow.open() else searchResultsWindow.open()
+                            click.player.playClickSound()
+                        }
                     }
-                }
             )
             .setContent(filteredItems)
             .build()
         )
         .addRenameHandler(filter)
         .build(player)
-    
+
     private val searchResultsWindow = Window.single()
         .setTitle(filter) { filter ->
             val title = Component.text()
@@ -196,42 +204,44 @@ internal class ItemsMenu(val player: Player) : ItemMenu {
                 .build()
             DefaultGuiTextures.EMPTY_GUI.getTitle(title)
         }
-        .setGui(PagedGui.items()
-            .setStructure(
-                ". . . < s > . . .",
-                "x x x x x x x x x",
-                "x x x x x x x x x",
-                "x x x x x x x x x",
-                "x x x x x x x x x",
-                "x x x x x x x x x"
-            )
-            .applyDefaultTPIngredients()
-            .addIngredient('s', openSearchItem)
-            .setContent(filteredItems)
-            .build()
+        .setGui(
+            PagedGui.items()
+                .setStructure(
+                    ". . . < s > . . .",
+                    "x x x x x x x x x",
+                    "x x x x x x x x x",
+                    "x x x x x x x x x",
+                    "x x x x x x x x x",
+                    "x x x x x x x x x"
+                )
+                .applyDefaultTPIngredients()
+                .addIngredient('s', openSearchItem)
+                .setContent(filteredItems)
+                .build()
         )
         .build(player)
-    
+
     override fun show() {
         ItemMenu.addToHistory(player.uniqueId, this)
         mainWindow.open()
     }
-    
-    private inner class CreativeTabItem(private val tab: Int, private val category: ItemCategory) : AbstractTabGuiBoundItem() {
-        
+
+    private inner class CreativeTabItem(private val tab: Int, private val category: ItemCategory) :
+        AbstractTabGuiBoundItem() {
+
         override fun getItemProvider(player: Player) = category.icon
-        
+
         override fun handleClick(clickType: ClickType, player: Player, click: Click) {
             if (clickType == ClickType.LEFT && gui.isTabAvailable(tab) && gui.tab != tab) {
                 player.playClickSound()
                 gui.tab = tab
             }
         }
-        
+
     }
-    
+
     private class TabPageBackItem : AbstractPagedGuiBoundItem() {
-        
+
         override fun getItemProvider(player: Player): ItemProvider {
             return if (gui.pageAmount <= 1)
                 ItemProvider.EMPTY
@@ -239,18 +249,18 @@ internal class ItemsMenu(val player: Player) : ItemMenu {
                 DefaultGuiItems.TP_SMALL_ARROW_LEFT_ON.clientsideProvider
             else DefaultGuiItems.TP_SMALL_ARROW_LEFT_OFF.clientsideProvider
         }
-        
+
         override fun handleClick(clickType: ClickType, player: Player, click: Click) {
             if (clickType == ClickType.LEFT) {
                 gui.page--
                 player.playClickSound()
             }
         }
-        
+
     }
-    
+
     private class TabPageForwardItem : AbstractPagedGuiBoundItem() {
-        
+
         override fun getItemProvider(player: Player): ItemProvider {
             return if (gui.pageAmount <= 1)
                 ItemProvider.EMPTY
@@ -258,18 +268,18 @@ internal class ItemsMenu(val player: Player) : ItemMenu {
                 DefaultGuiItems.TP_SMALL_ARROW_RIGHT_ON.clientsideProvider
             else DefaultGuiItems.TP_SMALL_ARROW_RIGHT_OFF.clientsideProvider
         }
-        
+
         override fun handleClick(clickType: ClickType, player: Player, click: Click) {
             if (clickType == ClickType.LEFT) {
                 gui.page++
                 player.playClickSound()
             }
         }
-        
+
     }
-    
+
     companion object {
         val CHEAT_MODE_KEY = NamespacedKey("nova", "cheat_mode")
     }
-    
+
 }
