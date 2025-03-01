@@ -37,68 +37,72 @@ internal lateinit var NOVA_VERSION: Version private set
 internal lateinit var NOVA_JAR: Path private set
 
 internal class NovaBootstrapper : PluginBootstrap {
-    
+
     /**
      * Numbers of addons that still await bootstrapping.
      */
     var remainingAddons = 0
         private set
-    
+
     init {
         BOOTSTRAPPER = this
     }
-    
+
     override fun bootstrap(context: BootstrapContext) {
         LIFECYCLE_MANAGER = context.lifecycleManager
-        LOGGER = context.logger
+        LOGGER = ComponentLogger.logger("SteveNova")
         NOVA_VERSION = Version(context.pluginMeta.version)
         NOVA_JAR = context.pluginSource
-        
+
         if (IS_DEV_SERVER)
             LOGGER.warn("Running in dev mode! Never use this on a production server!")
-        
+
         // prevent execution on unsupported minecraft versions
         if (Version.SERVER_VERSION !in REQUIRED_SERVER_VERSION) {
-            throw Exception("Nova is not compatible with this version of Minecraft.\n" +
-                "Nova v$NOVA_VERSION only runs on $REQUIRED_SERVER_VERSION.")
+            throw Exception(
+                "Nova is not compatible with this version of Minecraft.\n" +
+                        "Nova v$NOVA_VERSION only runs on $REQUIRED_SERVER_VERSION."
+            )
         }
-        
+
         // prevent execution if the previously installed version is not compatible with this version
         if (PREVIOUS_NOVA_VERSION != null && PREVIOUS_NOVA_VERSION < Version("0.9")) {
-            throw Exception("This version of Nova is not compatible with the version that was previously installed.\n" +
-                "Please erase all data related to Nova and try again.")
+            throw Exception(
+                "This version of Nova is not compatible with the version that was previously installed.\n" +
+                        "Please erase all data related to Nova and try again."
+            )
         }
-        
+
         // count addons
         remainingAddons = LaunchEntryPointHandler.INSTANCE.storage.asSequence()
             .flatMap { (_, storage) -> storage.registeredProviders }
             .filterIsInstance<PaperPluginParent.PaperBootstrapProvider>()
             .count { it.source.useZip { it.resolve("nova-addon.yml").exists() } }
-        
+
         // Immediately start initializer if no addons are installed
         if (remainingAddons == 0) {
             init()
         }
     }
-    
+
     fun handleAddonBootstrap(context: BootstrapContext) {
         if (--remainingAddons == 0) {
             LIFECYCLE_MANAGER = context.lifecycleManager
             init()
         }
     }
-    
+
     private fun init() {
         try {
             // legacy data folder migration if updating from 0.17 or earlier
             if (PREVIOUS_NOVA_VERSION != null && PREVIOUS_NOVA_VERSION < Version("0.18-SNAPSHOT"))
                 LegacyDataFolderMigrator.migrate()
-            
+
             if (IS_DEV_SERVER) {
                 DebugProbes.install()
                 DebugProbes.enableCreationStackTraces = true
             }
-            
+
             Patcher.run()
             Configs.extractDefaultConfig()
             CBFAdapters.register()
@@ -109,7 +113,7 @@ internal class NovaBootstrapper : PluginBootstrap {
             Runtime.getRuntime().halt(-1) // force-quit
         }
     }
-    
+
     override fun createPlugin(context: PluginProviderContext): JavaPlugin = Nova
-    
+
 }
