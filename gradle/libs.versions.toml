@@ -7,13 +7,13 @@ cbf = "0.18"
 jgrapht = "1.5.2"
 kotlin = "2.1.10"
 kotlinx-coroutines = "1.10.1"
-ktor = "3.1.0"
+ktor = "3.1.1"
 paper = "1.21.4-R0.1-SNAPSHOT"
 paperweight = "2.0.0-beta.14"
 xenondevs-commons = "1.26"
 
 [libraries]
-awssdk-s3 = { group = "software.amazon.awssdk", name = "s3", version = "2.30.26" }
+awssdk-s3 = { group = "software.amazon.awssdk", name = "s3", version = "2.30.31" }
 bstats = { group = "xyz.xenondevs.bstats", name = "bstats-bukkit", version = "3.0.1" }
 bytebase = { group = "xyz.xenondevs.bytebase", name = "ByteBase", version.ref = "bytebase" }
 bytebase-runtime = { group = "xyz.xenondevs.bytebase", name = "ByteBase-Runtime", version.ref = "bytebase" }
@@ -23,7 +23,7 @@ commons-gson = { group = "xyz.xenondevs.commons", name = "commons-gson", version
 commons-guava = { group = "xyz.xenondevs.commons", name = "commons-guava", version.ref = "xenondevs-commons" }
 commons-provider = { group = "xyz.xenondevs.commons", name = "commons-provider", version.ref = "xenondevs-commons" }
 commons-reflection = { group = "xyz.xenondevs.commons", name = "commons-reflection", version.ref = "xenondevs-commons" }
-configurate-yaml = { group = "org.spongepowered", name = "configurate-yaml", version = "4.1.2" }
+configurate-yaml = { group = "org.spongepowered", name = "configurate-yaml", version = "4.2.0" }
 cosmic-binary-format = { group = "xyz.xenondevs.cbf", name = "cosmic-binary-format", version.ref = "cbf" }
 fuzzywuzzy = { group = "me.xdrop", name = "fuzzywuzzy", version = "1.4.0" }
 invui-kotlin = { group = "xyz.xenondevs.invui", name = "invui-kotlin", version = "2.0.0-alpha.7" }
