@@ -26,12 +26,21 @@ import xyz.xenondevs.nova.world.item.recipe.RecipeContainer
 import xyz.xenondevs.nova.world.item.recipe.RecipeRegistry
 import java.util.*
 
+private fun discoveredRecipes(
+    player: Player,
+    recipes: Map<RecipeGroup<*>, Iterable<RecipeContainer>>?,
+): Map<RecipeGroup<*>, Set<RecipeContainer>> = recipes?.mapValues { entry ->
+    entry.value.filter {
+        player.hasDiscoveredRecipe(it.id.toNamespacedKey())
+    }.toSet()
+}?.filter { it.value.isNotEmpty() } ?: emptyMap()
+
 fun Player.showRecipes(item: ItemStack) = showRecipes(ItemUtils.getId(item))
 
 fun Player.showRecipes(id: String): Boolean {
-    val recipes = RecipeRegistry.CREATION_RECIPES[id]
+    val recipes = discoveredRecipes(this, RecipeRegistry.CREATION_RECIPES[id])
     val info = RecipeRegistry.creationInfo[id]
-    if (recipes != null) {
+    if (recipes.isNotEmpty()) {
         RecipesWindow(this, "recipes:$id".hashCode(), recipes, info).show()
         return true
     } else if (info != null) {
@@ -45,9 +54,9 @@ fun Player.showRecipes(id: String): Boolean {
 fun Player.showUsages(item: ItemStack) = showUsages(ItemUtils.getId(item))
 
 fun Player.showUsages(id: String): Boolean {
-    val recipes = RecipeRegistry.USAGE_RECIPES[id]
+    val recipes = discoveredRecipes(this, RecipeRegistry.USAGE_RECIPES[id])
     val info = RecipeRegistry.usageInfo[id]
-    if (recipes != null) {
+    if (recipes.isNotEmpty()) {
         RecipesWindow(this, "usages:$id".hashCode(), recipes, info).show()
         return true
     } else if (info != null) {
@@ -68,12 +77,6 @@ private class RecipesWindow(
     info: String? = null
 ) : ItemMenu {
 
-    private val discoveredRecipes = recipes.mapValues { entry ->
-        entry.value.filter {
-            player.hasDiscoveredRecipe(it.id.toNamespacedKey())
-        }.toSet()
-    }.filter { it.value.isNotEmpty() }
-
     private val recipesGuiStructure = Structure(
         "< . . . . . . . >",
         "x x x x x x x x x",
@@ -92,9 +95,9 @@ private class RecipesWindow(
 
     init {
         @Suppress("UNCHECKED_CAST")
-        discoveredRecipes as Map<RecipeGroup<Any>, Iterable<RecipeContainer>>
+        recipes as Map<RecipeGroup<Any>, Iterable<RecipeContainer>>
 
-        val craftingTabs: List<Pair<RecipeGroup<*>, Gui>> = discoveredRecipes
+        val craftingTabs: List<Pair<RecipeGroup<*>, Gui>> = recipes
             .mapValues { (type, containers) -> createPagedRecipesGui(containers.map { container -> type.getGui(container.recipe) }) }
             .map { it.key to it.value }
             .sortedBy { it.first }
@@ -125,7 +128,6 @@ private class RecipesWindow(
     }
 
     override fun show() {
-        if (discoveredRecipes.isEmpty()) return
         ItemMenu.addToHistory(viewerUUID, this)
         window = Window.single {
             it.setViewer(player)
